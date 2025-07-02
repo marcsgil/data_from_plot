@@ -96,8 +96,11 @@ class DataFromPlotApp:
         # Load and display the image
         self.load_image()
 
-        # Bind click event to the canvas instead of the label
-        self.canvas.bind("<Button-1>", self.on_click)
+        # Initialize plot area selection variables
+        self.plot_area = None
+        self.selecting_plot_area = False
+        self.selection_rect = None
+        self.plot_area_rect = None
 
     def load_image(self, file_path=None):
         try:
@@ -113,7 +116,7 @@ class DataFromPlotApp:
             self.canvas.config(width=image_width, height=image_height)
 
             # Display image on canvas
-            self.canvas.create_image(0, 0, anchor="nw", image=image)
+            self.image_id = self.canvas.create_image(0, 0, anchor="nw", image=image)
 
             # Hide the label since we're using canvas now
             self.label.pack_forget()
@@ -121,10 +124,26 @@ class DataFromPlotApp:
             # Resize window to match image size plus control panel
             window_width = image_width + 200 + 40
             window_height = max(
-                image_height + 40, 510
+                image_height + 40, 550
             )  # Ensure minimum height for controls
             self.root.geometry(f"{window_width}x{window_height}")
 
+            # Remove previous plot area rectangle if it exists
+            if hasattr(self, "plot_area_rect") and self.plot_area_rect:
+                self.canvas.delete(self.plot_area_rect)
+                self.plot_area_rect = None
+
+            # Reset plot area selection
+            self.plot_area = None
+            self.selecting_plot_area = False
+            self.selection_rect = None
+            self.plot_area_rect = None
+            self.canvas.bind("<Button-1>", self.start_plot_area_selection)
+            self.canvas.bind("<B1-Motion>", self.update_plot_area_selection)
+            self.canvas.bind("<ButtonRelease-1>", self.finish_plot_area_selection)
+            messagebox.showinfo(
+                "Select Plot Area", "Please drag to select the plot area (inside axes)."
+            )
         except Exception as e:
             print(f"Error loading image: {e}")
             self.label.config(text="Failed to load image")
@@ -244,6 +263,15 @@ class DataFromPlotApp:
         )
         load_btn.pack(fill="x", padx=10, pady=2)
 
+        # Add button to clear plot area selection
+        clear_area_btn = tk.Button(
+            self.control_frame,
+            text="Clear Plot Area",
+            command=self.clear_plot_area,
+            bg="white",
+        )
+        clear_area_btn.pack(fill="x", padx=10, pady=(5, 10))
+
     def clear_points(self):
         """Clear all collected points"""
         self.Xs.clear()
@@ -313,33 +341,35 @@ class DataFromPlotApp:
         if file_path:
             self.load_image(file_path)
 
-    def open_settings(self):
-        """Open settings dialog"""
-        print("Settings dialog - would open configuration window")
-        # Here you could add a settings window
-
     def on_click(self, event):
-        # Get the coordinates of the click
+        # Only allow marking points if plot area is set and click is inside it
+        if not hasattr(self, "plot_area") or self.plot_area is None:
+            messagebox.showwarning(
+                "Plot Area Not Set", "Please select the plot area first."
+            )
+            return
+        x0, y0, x1, y1 = self.plot_area
+        if not (x0 <= event.x <= x1 and y0 <= event.y <= y1):
+            messagebox.showwarning(
+                "Outside Plot Area", "Click inside the selected plot area."
+            )
+            return
         X, Y = event.x, event.y
-
         try:
-            # Check if image is loaded
-            if not hasattr(self, "image") or self.image is None:
-                print("Error: No image loaded")
-                return
-
-            # Parse the axis limit values with support for exponential notation
+            # Use plot area for coordinate mapping
+            plot_x_min, plot_y_min, plot_x_max, plot_y_max = self.plot_area
+            image_width = plot_x_max - plot_x_min
+            image_height = plot_y_max - plot_y_min
+            # Adjust click coordinates relative to plot area
+            rel_x = X - plot_x_min
+            rel_y = Y - plot_y_min
             x_min = float(self.xmin_var.get())
             x_max = float(self.xmax_var.get())
             y_min = float(self.ymin_var.get())
             y_max = float(self.ymax_var.get())
-
-            image_width = self.image.width()
-            image_height = self.image.height()
-
             x, y = pixel2coordinate(
-                X,
-                Y,
+                rel_x,
+                rel_y,
                 x_min,
                 x_max,
                 y_min,
@@ -402,6 +432,89 @@ class DataFromPlotApp:
             font=("Arial", max(12, radius), "bold"),
         )
         self.markers.append(text_id)
+
+    def start_plot_area_selection(self, event):
+        self.selecting_plot_area = True
+        self.plot_area_start = (event.x, event.y)
+        if self.selection_rect:
+            self.canvas.delete(self.selection_rect)
+        self.selection_rect = self.canvas.create_rectangle(
+            event.x,
+            event.y,
+            event.x,
+            event.y,
+            outline="blue",
+            width=2,
+            dash=(2, 2),
+            fill="gray",
+            stipple="gray25",
+        )
+
+    def update_plot_area_selection(self, event):
+        if self.selecting_plot_area and self.selection_rect:
+            self.canvas.coords(
+                self.selection_rect,
+                self.plot_area_start[0],
+                self.plot_area_start[1],
+                event.x,
+                event.y,
+            )
+
+    def finish_plot_area_selection(self, event):
+        if not self.selecting_plot_area:
+            return
+        self.selecting_plot_area = False
+        x0, y0 = self.plot_area_start
+        x1, y1 = event.x, event.y
+        self.plot_area = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+        # Remove the temporary selection rectangle
+        if self.selection_rect:
+            self.canvas.delete(self.selection_rect)
+            self.selection_rect = None
+        # Remove previous permanent plot area rectangle if it exists
+        if hasattr(self, "plot_area_rect") and self.plot_area_rect:
+            self.canvas.delete(self.plot_area_rect)
+        # Draw a permanent shaded rectangle for the selected plot area
+        x0, y0, x1, y1 = self.plot_area
+        self.plot_area_rect = self.canvas.create_rectangle(
+            x0,
+            y0,
+            x1,
+            y1,
+            outline="blue",
+            width=2,
+            dash=(2, 2),
+            fill="gray",
+            stipple="gray25",
+        )
+        # Place the plot area rectangle just above the image
+        if hasattr(self, "image_id"):
+            self.canvas.tag_raise(self.plot_area_rect, self.image_id)
+        self.canvas.unbind("<Button-1>")
+        self.canvas.unbind("<B1-Motion>")
+        self.canvas.unbind("<ButtonRelease-1>")
+        self.canvas.bind("<Button-1>", self.on_click)
+        messagebox.showinfo(
+            "Plot Area Selected",
+            "Plot area selected!\n\nNow set the axis limits and types in the control panel, then click inside the selected area to mark data points.",
+        )
+
+    def clear_plot_area(self):
+        """Clear the selected plot area and its rectangle, and require reselection."""
+        self.clear_points()
+        self.plot_area = None
+        if hasattr(self, "plot_area_rect") and self.plot_area_rect:
+            self.canvas.delete(self.plot_area_rect)
+            self.plot_area_rect = None
+        # Re-enable plot area selection
+        self.selecting_plot_area = False
+        self.selection_rect = None
+        self.canvas.bind("<Button-1>", self.start_plot_area_selection)
+        self.canvas.bind("<B1-Motion>", self.update_plot_area_selection)
+        self.canvas.bind("<ButtonRelease-1>", self.finish_plot_area_selection)
+        messagebox.showinfo(
+            "Plot Area Cleared", "Please drag to select a new plot area (inside axes)."
+        )
 
 
 parent = tk.Tk()
