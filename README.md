@@ -90,6 +90,13 @@ python3 main.py
 - If you see errors about missing modules, check your Python version with `python --version`.
 - For any other issues, please open an issue on GitHub.
 
+### MacOS
+
+If you are using MacOS, you may need to install Tkinter separately. You can do this using [Homebrew](https://brew.sh/) (a package manager for macOS, install it if you haven't already):
+```bash
+brew install python-tk
+```
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.

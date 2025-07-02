@@ -446,8 +446,6 @@ class DataFromPlotApp:
             outline="blue",
             width=2,
             dash=(2, 2),
-            fill="gray",
-            stipple="gray25",
         )
 
     def update_plot_area_selection(self, event):
@@ -484,8 +482,6 @@ class DataFromPlotApp:
             outline="blue",
             width=2,
             dash=(2, 2),
-            fill="gray",
-            stipple="gray25",
         )
         # Place the plot area rectangle just above the image
         if hasattr(self, "image_id"):
