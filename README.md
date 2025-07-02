@@ -44,6 +44,10 @@ Make sure you are inside the project folder (where `main.py` is located), then r
 ```
 python main.py
 ```
+or
+```
+python3 main.py
+```
 
 ## Usage
 
