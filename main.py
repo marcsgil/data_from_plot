@@ -20,6 +20,15 @@ def transform_axis(axis_value, axis_type):
         return axis_value
 
 
+def format(val):
+    if val == 0:
+        return "0"
+    if abs(val) >= 1e5 or abs(val) < 1e-3:
+        return f"{val:.3e}"
+    else:
+        return f"{val:.4f}".rstrip("0").rstrip(".")
+
+
 def pixel2coordinate(
     x,
     y,
@@ -47,26 +56,6 @@ def pixel2coordinate(
     y = transform_value(y_linear, y_axis_type)
 
     return x, y
-
-
-def parse_float_expression(expression):
-    """Parse a float expression that may contain exponential notation (a**b)."""
-    try:
-        # Replace ** with Python's power operator and evaluate safely
-        # Only allow numbers, +, -, *, /, **, (, ), and decimal points
-        allowed_chars = set("0123456789+-*/.() ")
-        if not all(c in allowed_chars for c in expression):
-            raise ValueError("Invalid characters in expression")
-
-        # Use eval with restricted globals for safety
-        result = eval(expression, {"__builtins__": {}}, {})
-        return float(result)
-    except Exception:
-        # If parsing fails, try to convert as regular float
-        try:
-            return float(expression)
-        except Exception:
-            raise ValueError(f"Cannot parse expression: {expression}")
 
 
 class DataFromPlotApp:
@@ -110,10 +99,12 @@ class DataFromPlotApp:
         # Bind click event to the canvas instead of the label
         self.canvas.bind("<Button-1>", self.on_click)
 
-    def load_image(self):
+    def load_image(self, file_path=None):
         try:
-            # Load the image file
-            image = tk.PhotoImage(file="example.png")
+            # Use provided file_path or default to example.png
+            if file_path is None:
+                file_path = "example.png"
+            image = tk.PhotoImage(file=file_path)
             self.image = image  # Keep a reference to avoid garbage collection
 
             # Configure canvas size to match image
@@ -128,10 +119,9 @@ class DataFromPlotApp:
             self.label.pack_forget()
 
             # Resize window to match image size plus control panel
-            # Add width for control panel (200) plus padding
             window_width = image_width + 200 + 40
             window_height = max(
-                image_height + 40, 400
+                image_height + 40, 510
             )  # Ensure minimum height for controls
             self.root.geometry(f"{window_width}x{window_height}")
 
@@ -168,7 +158,7 @@ class DataFromPlotApp:
         y_axis_label = tk.Label(self.control_frame, text="Y-Axis Type:", bg="lightgray")
         y_axis_label.pack(anchor="w", padx=10, pady=(0, 5))
 
-        self.y_axis_var = tk.StringVar(value="Log10")
+        self.y_axis_var = tk.StringVar(value="Linear")
         y_axis_dropdown = ttk.Combobox(
             self.control_frame,
             textvariable=self.y_axis_var,
@@ -193,7 +183,7 @@ class DataFromPlotApp:
         xmin_frame = tk.Frame(limits_frame, bg="lightgray")
         xmin_frame.pack(fill="x", pady=2)
         tk.Label(xmin_frame, text="X min:", bg="lightgray", width=8).pack(side="left")
-        self.xmin_var = tk.StringVar(value="0.0")
+        self.xmin_var = tk.StringVar(value="0.15")
         self.xmin_entry = tk.Entry(xmin_frame, textvariable=self.xmin_var, width=12)
         self.xmin_entry.pack(side="right", fill="x", expand=True)
 
@@ -201,7 +191,7 @@ class DataFromPlotApp:
         xmax_frame = tk.Frame(limits_frame, bg="lightgray")
         xmax_frame.pack(fill="x", pady=2)
         tk.Label(xmax_frame, text="X max:", bg="lightgray", width=8).pack(side="left")
-        self.xmax_var = tk.StringVar(value="100.0")
+        self.xmax_var = tk.StringVar(value="0.55")
         self.xmax_entry = tk.Entry(xmax_frame, textvariable=self.xmax_var, width=12)
         self.xmax_entry.pack(side="right", fill="x", expand=True)
 
@@ -209,7 +199,7 @@ class DataFromPlotApp:
         ymin_frame = tk.Frame(limits_frame, bg="lightgray")
         ymin_frame.pack(fill="x", pady=2)
         tk.Label(ymin_frame, text="Y min:", bg="lightgray", width=8).pack(side="left")
-        self.ymin_var = tk.StringVar(value="1.0")
+        self.ymin_var = tk.StringVar(value="-5")
         self.ymin_entry = tk.Entry(ymin_frame, textvariable=self.ymin_var, width=12)
         self.ymin_entry.pack(side="right", fill="x", expand=True)
 
@@ -217,7 +207,7 @@ class DataFromPlotApp:
         ymax_frame = tk.Frame(limits_frame, bg="lightgray")
         ymax_frame.pack(fill="x", pady=2)
         tk.Label(ymax_frame, text="Y max:", bg="lightgray", width=8).pack(side="left")
-        self.ymax_var = tk.StringVar(value="100.0")
+        self.ymax_var = tk.StringVar(value="4")
         self.ymax_entry = tk.Entry(ymax_frame, textvariable=self.ymax_var, width=12)
         self.ymax_entry.pack(side="right", fill="x", expand=True)
 
@@ -253,12 +243,6 @@ class DataFromPlotApp:
             bg="white",
         )
         load_btn.pack(fill="x", padx=10, pady=2)
-
-        # Settings button
-        settings_btn = tk.Button(
-            self.control_frame, text="Settings", command=self.open_settings, bg="white"
-        )
-        settings_btn.pack(fill="x", padx=10, pady=2)
 
     def clear_points(self):
         """Clear all collected points"""
@@ -318,9 +302,16 @@ class DataFromPlotApp:
             messagebox.showerror("Export Error", f"Error saving file:\n{e}")
 
     def load_new_image(self):
-        """Load a new image (placeholder for file dialog)"""
-        print("Load new image functionality - would open file dialog")
-        # Here you could add tkinter.filedialog functionality
+        filetypes = [
+            ("PNG files", "*.png"),
+            ("JPEG files", "*.jpg;*.jpeg"),
+            ("All files", "*.*"),
+        ]
+        file_path = filedialog.askopenfilename(
+            title="Select Image File", filetypes=filetypes
+        )
+        if file_path:
+            self.load_image(file_path)
 
     def open_settings(self):
         """Open settings dialog"""
@@ -330,7 +321,6 @@ class DataFromPlotApp:
     def on_click(self, event):
         # Get the coordinates of the click
         X, Y = event.x, event.y
-        print(f"Clicked at: ({X}, {Y})")
 
         try:
             # Check if image is loaded
@@ -339,18 +329,13 @@ class DataFromPlotApp:
                 return
 
             # Parse the axis limit values with support for exponential notation
-            x_min = parse_float_expression(self.xmin_var.get())
-            x_max = parse_float_expression(self.xmax_var.get())
-            y_min = parse_float_expression(self.ymin_var.get())
-            y_max = parse_float_expression(self.ymax_var.get())
-
-            print(
-                f"Parsed limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}"
-            )
+            x_min = float(self.xmin_var.get())
+            x_max = float(self.xmax_var.get())
+            y_min = float(self.ymin_var.get())
+            y_max = float(self.ymax_var.get())
 
             image_width = self.image.width()
             image_height = self.image.height()
-            print(f"Image dimensions: {image_width} x {image_height}")
 
             x, y = pixel2coordinate(
                 X,
@@ -364,7 +349,6 @@ class DataFromPlotApp:
                 self.x_axis_var.get(),
                 self.y_axis_var.get(),
             )
-            print(f"Converted to coordinates: ({x}, {y})")
 
             # Store both pixel and converted coordinates
             self.Xs.append(X)
@@ -372,9 +356,7 @@ class DataFromPlotApp:
             self.xs.append(x)
             self.ys.append(y)
 
-            print(
-                f"Stored points: xs length = {len(self.xs)}, ys length = {len(self.ys)}"
-            )
+            print(f"Coordinate: (x={format(x)}, y={format(y)})")
 
             # Draw a marker at the clicked point
             self.draw_marker(X, Y)
@@ -390,9 +372,15 @@ class DataFromPlotApp:
             traceback.print_exc()
 
     def draw_marker(self, x, y):
-        """Draw a marker at the specified pixel coordinates"""
-        # Draw a small red circle as a marker
-        radius = 8
+        """Draw a marker at the specified pixel coordinates, scaling with image size"""
+        # Scale marker size with image size (e.g., 2% of min dimension, min 6px, max 24px)
+        if hasattr(self, "image"):
+            image_width = self.image.width()
+            image_height = self.image.height()
+            min_dim = min(image_width, image_height)
+            radius = max(6, min(24, int(min_dim * 0.02)))
+        else:
+            radius = 8  # fallback
         marker_id = self.canvas.create_oval(
             x - radius,
             y - radius,
@@ -404,10 +392,14 @@ class DataFromPlotApp:
         )
         self.markers.append(marker_id)
 
-        # Also draw point number
+        # Also draw point number, offset scaled with radius
         point_num = len(self.xs)
         text_id = self.canvas.create_text(
-            x + 16, y - 16, text=str(point_num), fill="red", font=("Arial", 16, "bold")
+            x + radius * 2,
+            y - radius * 2,
+            text=str(point_num),
+            fill="red",
+            font=("Arial", max(12, radius), "bold"),
         )
         self.markers.append(text_id)
 
