@@ -313,7 +313,7 @@ class DataFromPlotApp:
                 writer = csv.writer(csvfile)
 
                 # Write header
-                writer.writerow(["X_Coordinate", "Y_Coordinate"])
+                writer.writerow(["x", "y"])
 
                 # Write data points
                 for x, y in zip(self.xs, self.ys):
