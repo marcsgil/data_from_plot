@@ -408,7 +408,7 @@ class DataFromPlotApp:
             image_width = self.image.width()
             image_height = self.image.height()
             min_dim = min(image_width, image_height)
-            radius = max(6, min(24, int(min_dim * 0.02)))
+            radius = max(6, min(24, int(min_dim * 0.01)))
         else:
             radius = 8  # fallback
         marker_id = self.canvas.create_oval(
@@ -429,7 +429,7 @@ class DataFromPlotApp:
             y - radius * 2,
             text=str(point_num),
             fill="red",
-            font=("Arial", max(12, radius), "bold"),
+            font=("Arial", max(10, radius), "bold"),
         )
         self.markers.append(text_id)
 
