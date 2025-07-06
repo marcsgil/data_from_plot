@@ -144,6 +144,7 @@ class DataFromPlotApp:
             messagebox.showinfo(
                 "Select Plot Area", "Please drag to select the plot area (inside axes)."
             )
+            self.clear_points()  # Clear points when loading a new image
         except Exception as e:
             print(f"Error loading image: {e}")
             self.label.config(text="Failed to load image")
