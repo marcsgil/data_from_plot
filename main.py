@@ -387,12 +387,6 @@ class DataFromPlotApp:
                 "Plot Area Not Set", "Please select the plot area first."
             )
             return
-        x0, y0, x1, y1 = self.plot_area
-        if not (x0 <= event.x <= x1 and y0 <= event.y <= y1):
-            messagebox.showwarning(
-                "Outside Plot Area", "Click inside the selected plot area."
-            )
-            return
         X, Y = event.x, event.y
         try:
             # Use plot area for coordinate mapping
