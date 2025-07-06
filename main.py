@@ -124,7 +124,7 @@ class DataFromPlotApp:
             # Resize window to match image size plus control panel
             window_width = image_width + 200 + 40
             window_height = max(
-                image_height + 40, 550
+                image_height + 40, 660
             )  # Ensure minimum height for controls
             self.root.geometry(f"{window_width}x{window_height}")
 
@@ -230,6 +230,43 @@ class DataFromPlotApp:
         self.ymax_entry = tk.Entry(ymax_frame, textvariable=self.ymax_var, width=12)
         self.ymax_entry.pack(side="right", fill="x", expand=True)
 
+        # CSV Headers section
+        headers_label = tk.Label(
+            self.control_frame,
+            text="CSV Headers:",
+            font=("Arial", 10, "bold"),
+            bg="lightgray",
+        )
+        headers_label.pack(anchor="w", padx=10, pady=(15, 5))
+
+        # Create frame for CSV header inputs
+        headers_frame = tk.Frame(self.control_frame, bg="lightgray")
+        headers_frame.pack(fill="x", padx=10, pady=5)
+
+        # X header
+        x_header_frame = tk.Frame(headers_frame, bg="lightgray")
+        x_header_frame.pack(fill="x", pady=2)
+        tk.Label(x_header_frame, text="X header:", bg="lightgray", width=8).pack(
+            side="left"
+        )
+        self.x_header_var = tk.StringVar(value="x")
+        self.x_header_entry = tk.Entry(
+            x_header_frame, textvariable=self.x_header_var, width=12
+        )
+        self.x_header_entry.pack(side="right", fill="x", expand=True)
+
+        # Y header
+        y_header_frame = tk.Frame(headers_frame, bg="lightgray")
+        y_header_frame.pack(fill="x", pady=2)
+        tk.Label(y_header_frame, text="Y header:", bg="lightgray", width=8).pack(
+            side="left"
+        )
+        self.y_header_var = tk.StringVar(value="y")
+        self.y_header_entry = tk.Entry(
+            y_header_frame, textvariable=self.y_header_var, width=12
+        )
+        self.y_header_entry.pack(side="right", fill="x", expand=True)
+
         # Buttons section
         buttons_label = tk.Label(
             self.control_frame,
@@ -312,8 +349,10 @@ class DataFromPlotApp:
             with open(file_path, "w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.writer(csvfile)
 
-                # Write header
-                writer.writerow(["x", "y"])
+                # Write header using user-defined column names
+                x_header = self.x_header_var.get().strip() or "x"
+                y_header = self.y_header_var.get().strip() or "y"
+                writer.writerow([x_header, y_header])
 
                 # Write data points
                 for x, y in zip(self.xs, self.ys):
