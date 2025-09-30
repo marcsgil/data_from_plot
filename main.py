@@ -107,13 +107,51 @@ class DataFromPlotApp:
             # Use provided file_path or default to example.png
             if file_path is None:
                 file_path = "example.png"
-            image = tk.PhotoImage(file=file_path)
+            original_image = tk.PhotoImage(file=file_path)
+
+            # Get original dimensions
+            orig_width = original_image.width()
+            orig_height = original_image.height()
+
+            # Define maximum dimensions (accounting for screen space and controls)
+            max_width = 1400  # Maximum width for image
+            max_height = 900  # Maximum height for image
+
+            # Calculate scaling factor to fit within max dimensions
+            scale_x = max_width / orig_width if orig_width > max_width else 1
+            scale_y = max_height / orig_height if orig_height > max_height else 1
+            scale = min(scale_x, scale_y)
+
+            # Store the scale factor for coordinate conversion
+            self.scale_factor = scale
+
+            # Resize if necessary
+            if scale < 1:
+                # Calculate subsample factor (must be integer)
+                subsample_factor = int(1/scale) + 1
+                actual_scale = 1 / subsample_factor
+                new_width = int(orig_width * actual_scale)
+                new_height = int(orig_height * actual_scale)
+                print(subsample_factor)
+                image = original_image.subsample(subsample_factor, subsample_factor)
+                # Update scale factor with actual value
+                self.scale_factor = actual_scale
+                # Store both original and displayed dimensions
+                self.original_width = orig_width
+                self.original_height = orig_height
+                self.display_width = new_width
+                self.display_height = new_height
+            else:
+                image = original_image
+                self.original_width = orig_width
+                self.original_height = orig_height
+                self.display_width = orig_width
+                self.display_height = orig_height
+
             self.image = image  # Keep a reference to avoid garbage collection
 
-            # Configure canvas size to match image
-            image_width = image.width()
-            image_height = image.height()
-            self.canvas.config(width=image_width, height=image_height)
+            # Configure canvas size to match displayed image
+            self.canvas.config(width=self.display_width, height=self.display_height)
 
             # Display image on canvas
             self.image_id = self.canvas.create_image(0, 0, anchor="nw", image=image)
@@ -121,10 +159,10 @@ class DataFromPlotApp:
             # Hide the label since we're using canvas now
             self.label.pack_forget()
 
-            # Resize window to match image size plus control panel
-            window_width = image_width + 200 + 40
+            # Resize window to match displayed image size plus control panel
+            window_width = self.display_width + 200 + 40
             window_height = max(
-                image_height + 40, 660
+                self.display_height + 40, 660
             )  # Ensure minimum height for controls
             self.root.geometry(f"{window_width}x{window_height}")
 
@@ -372,8 +410,6 @@ class DataFromPlotApp:
     def load_new_image(self):
         filetypes = [
             ("PNG files", "*.png"),
-            ("JPEG files", "*.jpg;*.jpeg"),
-            ("All files", "*.*"),
         ]
         file_path = filedialog.askopenfilename(
             title="Select Image File", filetypes=filetypes
